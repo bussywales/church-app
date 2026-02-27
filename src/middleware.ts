@@ -1,20 +1,40 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 
-export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    const token = request.cookies.get("demo-auth")?.value;
+const protectedPathPrefixes = ["/account", "/give", "/my/registrations", "/admin"];
 
-    if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("next", request.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+function isProtectedPath(pathname: string) {
+  if (protectedPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return true;
   }
 
-  return NextResponse.next();
+  return /^\/events\/[^/]+\/register$/.test(pathname);
+}
+
+export async function middleware(request: NextRequest) {
+  const { response, user } = await updateSession(request);
+
+  if (!isProtectedPath(request.nextUrl.pathname)) {
+    return response;
+  }
+
+  if (user) {
+    return response;
+  }
+
+  const loginUrl = new URL("/login", request.url);
+  const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  loginUrl.searchParams.set("next", nextPath);
+
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/account/:path*",
+    "/give/:path*",
+    "/my/registrations/:path*",
+    "/admin/:path*",
+    "/events/:id/register",
+  ],
 };
