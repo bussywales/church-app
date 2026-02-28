@@ -62,11 +62,10 @@ export function AuthForm() {
     if (data.user) {
       await supabase.from("profiles").upsert(
         {
-          id: data.user.id,
-          email: data.user.email ?? email,
+          user_id: data.user.id,
           role: "MEMBER",
         },
-        { onConflict: "id" },
+        { onConflict: "user_id" },
       );
     }
 

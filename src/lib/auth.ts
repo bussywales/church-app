@@ -4,9 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeRole, type AppRole } from "@/lib/roles";
 
 export type Profile = {
-  id: string;
-  email: string | null;
+  user_id: string;
   full_name: string | null;
+  phone: string | null;
+  address_line1: string | null;
+  city: string | null;
+  postcode: string | null;
   role: AppRole;
 };
 
@@ -14,8 +17,8 @@ async function fetchProfile(user: User): Promise<Profile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role")
-    .eq("id", user.id)
+    .select("user_id, full_name, phone, address_line1, city, postcode, role")
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (error || !data) {
@@ -23,14 +26,17 @@ async function fetchProfile(user: User): Promise<Profile | null> {
   }
 
   return {
-    id: data.id,
-    email: data.email,
+    user_id: data.user_id,
     full_name: data.full_name,
+    phone: data.phone,
+    address_line1: data.address_line1,
+    city: data.city,
+    postcode: data.postcode,
     role: normalizeRole(data.role),
   };
 }
 
-async function ensureProfile(user: User): Promise<Profile> {
+export async function ensureProfile(user: User): Promise<Profile> {
   const existing = await fetchProfile(user);
 
   if (existing) {
@@ -41,17 +47,19 @@ async function ensureProfile(user: User): Promise<Profile> {
 
   await supabase.from("profiles").upsert(
     {
-      id: user.id,
-      email: user.email ?? null,
+      user_id: user.id,
       role: "MEMBER",
     },
-    { onConflict: "id" },
+    { onConflict: "user_id" },
   );
 
   return {
-    id: user.id,
-    email: user.email ?? null,
+    user_id: user.id,
     full_name: null,
+    phone: null,
+    address_line1: null,
+    city: null,
+    postcode: null,
     role: "MEMBER",
   };
 }

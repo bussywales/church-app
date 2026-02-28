@@ -1,15 +1,32 @@
-import { requireRole } from "@/lib/auth";
-import { ADMIN_ROLES } from "@/lib/roles";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 
 export default async function AdminPage() {
-  const { profile } = await requireRole(ADMIN_ROLES);
+  const supabase = await createClient();
+
+  const [sermonsResult, eventsResult] = await Promise.all([
+    supabase.from("sermons").select("id", { count: "exact", head: true }),
+    supabase.from("events").select("id", { count: "exact", head: true }),
+  ]);
 
   return (
-    <Card>
-      <h1 className="text-2xl font-semibold">Admin</h1>
-      <p className="mt-2 text-slate-600">Restricted admin area for elevated roles.</p>
-      <p className="mt-3 text-sm text-slate-700">Current role: {profile.role}</p>
-    </Card>
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <h2 className="text-lg font-semibold">Sermons</h2>
+        <p className="mt-1 text-sm text-slate-600">Total sermons: {sermonsResult.count ?? 0}</p>
+        <Link href="/admin/sermons" className="mt-3 inline-block text-sm underline">
+          Manage sermons
+        </Link>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Events</h2>
+        <p className="mt-1 text-sm text-slate-600">Total events: {eventsResult.count ?? 0}</p>
+        <Link href="/admin/events" className="mt-3 inline-block text-sm underline">
+          Manage events
+        </Link>
+      </Card>
+    </div>
   );
 }
