@@ -1,63 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Church App
 
-## Getting Started
+Next.js + Supabase + Stripe church management app with public content, registrations, giving, and admin tools.
 
-First, run the development server:
+## Local development
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create local env file:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Start dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Required in `.env.local`:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
 
-To learn more about Next.js, take a look at the following resources:
+See [`.env.example`](./.env.example) for a template.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## Apply schema in Supabase SQL Editor
+## Supabase setup
 
 1. Open your Supabase project dashboard.
 2. Go to SQL Editor.
 3. Open [`supabase/schema.sql`](./supabase/schema.sql).
-4. Paste and run the SQL script to create tables and RLS policies.
+4. Run the script to create schema and RLS policies.
 
 Notes:
-- `registrations` enforces uniqueness on `(event_id, user_id)` to prevent duplicate signups.
-- `registrations.checked_in_at` stores the timestamp when an attendee is checked in.
-- `settings` stores feature switches like `gift_aid_enabled`.
-- `people_notes` is internal-only and restricted by RLS to `SUPER_ADMIN`, `ADMIN`, and `PASTORAL`.
-- `leads` captures `/new-here` submissions and supports admin follow-up workflows.
 
-## Stripe giving setup
+- `registrations` has unique `(event_id, user_id)` to prevent duplicates.
+- `registrations.checked_in_at` stores check-in timestamp.
+- `settings` stores feature flags (for example `gift_aid_enabled`).
+- `people_notes` is restricted by RLS to `SUPER_ADMIN`, `ADMIN`, `PASTORAL`.
+- `leads` stores `/new-here` submissions.
 
-1. Add required environment variables to `.env.local`:
-   - `NEXT_PUBLIC_SITE_URL`
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_WEBHOOK_SECRET`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-2. Start the app:
-   - `npm run dev`
-3. Forward Stripe events locally:
-   - `stripe listen --forward-to localhost:3000/api/stripe/webhook`
-4. Copy the reported `whsec_...` value into `STRIPE_WEBHOOK_SECRET`.
+## Stripe webhook testing
+
+1. Start the app:
+
+```bash
+npm run dev
+```
+
+2. Start Stripe event forwarding:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+3. Copy the reported `whsec_...` value into `STRIPE_WEBHOOK_SECRET`.
+4. Trigger a test Checkout flow from `/give`.
+
+## Validation
+
+```bash
+npm run lint
+npm run build
+```
