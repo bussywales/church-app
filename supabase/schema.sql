@@ -44,9 +44,12 @@ create table if not exists public.registrations (
   user_id uuid not null references public.profiles(user_id) on delete cascade,
   status text not null default 'REGISTERED',
   qr_code text,
+  checked_in_at timestamptz,
   created_at timestamptz not null default now(),
   unique (event_id, user_id)
 );
+
+alter table public.registrations add column if not exists checked_in_at timestamptz;
 
 create table if not exists public.funds (
   id uuid primary key default gen_random_uuid(),
@@ -79,6 +82,7 @@ create index if not exists sermons_published_idx on public.sermons(is_published,
 create index if not exists events_published_idx on public.events(is_published, starts_at asc);
 create index if not exists registrations_user_id_idx on public.registrations(user_id);
 create index if not exists registrations_event_id_idx on public.registrations(event_id);
+create index if not exists registrations_checked_in_at_idx on public.registrations(checked_in_at desc);
 create index if not exists donations_user_id_idx on public.donations(user_id);
 create index if not exists gift_aid_declarations_user_id_idx on public.gift_aid_declarations(user_id);
 

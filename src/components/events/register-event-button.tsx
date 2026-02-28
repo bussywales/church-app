@@ -20,11 +20,21 @@ export function RegisterEventButton({ eventId, capacityReached, isAuthenticated 
   }
 
   const registerPath = `/events/${eventId}/register`;
-  const href = isAuthenticated ? registerPath : `/login?next=${encodeURIComponent(registerPath)}`;
+
+  if (!isAuthenticated) {
+    return (
+      <Link
+        href={`/login?next=${encodeURIComponent(registerPath)}`}
+        className="inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+      >
+        Log in to register
+      </Link>
+    );
+  }
 
   return (
     <Link
-      href={href}
+      href={registerPath}
       className="inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
     >
       Register

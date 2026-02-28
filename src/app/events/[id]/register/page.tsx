@@ -27,7 +27,7 @@ export default async function EventRegisterPage({ params }: EventRegisterPagePro
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", id),
     supabase
       .from("registrations")
-      .select("id")
+      .select("id, qr_code, status")
       .eq("event_id", id)
       .eq("user_id", user.id)
       .maybeSingle(),
@@ -45,7 +45,15 @@ export default async function EventRegisterPage({ params }: EventRegisterPagePro
       <p className="mt-2 text-sm text-slate-600">{formatDateTime(event.starts_at)}</p>
 
       {existingRegistration ? (
-        <p className="mt-4 text-sm text-emerald-700">You are already registered for this event.</p>
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-emerald-700">You are already registered for this event.</p>
+          <p className="text-xs text-slate-600">Status: {existingRegistration.status}</p>
+          {existingRegistration.qr_code ? (
+            <p className="break-all rounded-md bg-slate-100 px-3 py-2 font-mono text-xs text-slate-700">
+              QR token: {existingRegistration.qr_code}
+            </p>
+          ) : null}
+        </div>
       ) : capacityReached ? (
         <p className="mt-4 text-sm text-amber-700">This event is full. Waitlist support is not enabled yet.</p>
       ) : (

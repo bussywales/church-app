@@ -41,3 +41,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 2. Go to SQL Editor.
 3. Open [`supabase/schema.sql`](./supabase/schema.sql).
 4. Paste and run the SQL script to create tables and RLS policies.
+
+Notes:
+- `registrations` enforces uniqueness on `(event_id, user_id)` to prevent duplicate signups.
+- `registrations.checked_in_at` stores the timestamp when an attendee is checked in.

@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { CONTENT_ADMIN_ROLES } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
@@ -202,6 +203,9 @@ export default async function AdminEventsPage() {
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-500">Starts {formatDateTime(event.starts_at)}</p>
+            <Link href={`/admin/events/${event.id}/checkin`} className="mt-2 inline-block text-xs underline">
+              Open check-in
+            </Link>
 
             <form action={updateEventAction} className="mt-4 grid gap-3 md:grid-cols-2">
               <input type="hidden" name="id" value={event.id} />

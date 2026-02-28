@@ -13,7 +13,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const { id } = await params;
   const [supabase, user] = await Promise.all([createClient(), getCurrentUser()]);
 
-  const [{ data: event }, { count: registrationCount }] = await Promise.all([
+  const [{ data: event }, { count: registrationCount }, { data: existingRegistration }] = await Promise.all([
     supabase
       .from("events")
       .select("id, title, description, location, starts_at, ends_at, capacity")
@@ -21,6 +21,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       .eq("is_published", true)
       .maybeSingle(),
     supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", id),
+    user
+      ? supabase
+          .from("registrations")
+          .select("id")
+          .eq("event_id", id)
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   if (!event) {
@@ -49,7 +57,11 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         </p>
 
         <div className="mt-5">
-          <RegisterEventButton eventId={event.id} capacityReached={capacityReached} isAuthenticated={Boolean(user)} />
+          {existingRegistration ? (
+            <p className="text-sm text-emerald-700">You are already registered for this event.</p>
+          ) : (
+            <RegisterEventButton eventId={event.id} capacityReached={capacityReached} isAuthenticated={Boolean(user)} />
+          )}
         </div>
 
         {capacityReached ? (

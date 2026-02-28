@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { ensureProfile } from "@/lib/auth";
+import { getRegistrationEmailProvider } from "@/lib/email/provider";
 import { createClient } from "@/lib/supabase/server";
 
 type RegisterRouteContext = {
@@ -22,7 +24,7 @@ export async function POST(_request: Request, context: RegisterRouteContext) {
   const [{ data: event }, { count }, { data: existing }] = await Promise.all([
     supabase
       .from("events")
-      .select("id, capacity, is_published")
+      .select("id, title, starts_at, capacity, is_published")
       .eq("id", eventId)
       .eq("is_published", true)
       .maybeSingle(),
@@ -47,15 +49,31 @@ export async function POST(_request: Request, context: RegisterRouteContext) {
     return NextResponse.json({ error: "Event capacity reached." }, { status: 409 });
   }
 
+  const qrToken = randomUUID();
+
   const { error } = await supabase.from("registrations").insert({
     event_id: eventId,
     user_id: user.id,
     status: "REGISTERED",
-    qr_code: null,
+    qr_code: qrToken,
   });
 
   if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json({ message: "You are already registered for this event." });
+    }
+
     return NextResponse.json({ error: "Unable to register right now." }, { status: 400 });
+  }
+
+  if (user.email) {
+    const emailProvider = getRegistrationEmailProvider();
+    await emailProvider.sendRegistrationConfirmation({
+      to: user.email,
+      eventTitle: event.title,
+      eventStartsAt: event.starts_at,
+      qrToken,
+    });
   }
 
   return NextResponse.json({ message: "Registration successful." });
