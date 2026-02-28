@@ -44,6 +44,30 @@ See [`.env.example`](./.env.example) for a template.
 3. Open [`supabase/schema.sql`](./supabase/schema.sql).
 4. Run the script to create schema and RLS policies.
 
+## Database migrations (Supabase)
+
+- Migrations live in `supabase/migrations/` and are the source of truth.
+- `supabase/schema.sql` is kept as a reference snapshot.
+
+Link locally:
+
+```bash
+npx supabase login
+npx supabase link --project-ref uaqbybbnqjzqxggcknhz
+```
+
+Push locally:
+
+```bash
+npx supabase db push
+```
+
+- CI deploys migrations on pushes to `main` when `supabase/migrations/**` or `supabase/config.toml` changes.
+- Required GitHub Secrets:
+  - `SUPABASE_PROJECT_REF`
+  - `SUPABASE_ACCESS_TOKEN`
+  - `SUPABASE_DB_PASSWORD`
+
 Notes:
 
 - `registrations` has unique `(event_id, user_id)` to prevent duplicates.
