@@ -5,9 +5,10 @@ import { Card } from "@/components/ui/card";
 export default async function AdminPage() {
   const supabase = await createClient();
 
-  const [sermonsResult, eventsResult] = await Promise.all([
+  const [sermonsResult, eventsResult, leadsResult] = await Promise.all([
     supabase.from("sermons").select("id", { count: "exact", head: true }),
     supabase.from("events").select("id", { count: "exact", head: true }),
+    supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "NEW"),
   ]);
 
   return (
@@ -33,6 +34,14 @@ export default async function AdminPage() {
         <p className="mt-1 text-sm text-slate-600">Configure Gift Aid and donation options.</p>
         <Link href="/admin/settings" className="mt-3 inline-block text-sm underline">
           Open settings
+        </Link>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">People CRM</h2>
+        <p className="mt-1 text-sm text-slate-600">New leads: {leadsResult.count ?? 0}</p>
+        <Link href="/admin/people" className="mt-3 inline-block text-sm underline">
+          Open people management
         </Link>
       </Card>
     </div>

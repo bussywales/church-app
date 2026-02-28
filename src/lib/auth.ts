@@ -5,11 +5,14 @@ import { normalizeRole, type AppRole } from "@/lib/roles";
 
 export type Profile = {
   user_id: string;
+  email: string | null;
   full_name: string | null;
   phone: string | null;
   address_line1: string | null;
   city: string | null;
   postcode: string | null;
+  status: "VISITOR" | "MEMBER";
+  tags: string[];
   role: AppRole;
 };
 
@@ -17,7 +20,7 @@ async function fetchProfile(user: User): Promise<Profile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, full_name, phone, address_line1, city, postcode, role")
+    .select("user_id, email, full_name, phone, address_line1, city, postcode, status, tags, role")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -27,11 +30,14 @@ async function fetchProfile(user: User): Promise<Profile | null> {
 
   return {
     user_id: data.user_id,
+    email: data.email,
     full_name: data.full_name,
     phone: data.phone,
     address_line1: data.address_line1,
     city: data.city,
     postcode: data.postcode,
+    status: data.status,
+    tags: data.tags,
     role: normalizeRole(data.role),
   };
 }
@@ -48,6 +54,8 @@ export async function ensureProfile(user: User): Promise<Profile> {
   await supabase.from("profiles").upsert(
     {
       user_id: user.id,
+      email: user.email ?? null,
+      status: "MEMBER",
       role: "MEMBER",
     },
     { onConflict: "user_id" },
@@ -55,11 +63,14 @@ export async function ensureProfile(user: User): Promise<Profile> {
 
   return {
     user_id: user.id,
+    email: user.email ?? null,
     full_name: null,
     phone: null,
     address_line1: null,
     city: null,
     postcode: null,
+    status: "MEMBER",
+    tags: [],
     role: "MEMBER",
   };
 }

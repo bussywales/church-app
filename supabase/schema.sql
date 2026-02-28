@@ -1,17 +1,32 @@
 create extension if not exists "pgcrypto";
 
-create type public.app_role as enum ('MEMBER', 'ADMIN', 'SUPER_ADMIN', 'EVENTS_LEAD', 'FINANCE');
+create type public.app_role as enum ('MEMBER', 'ADMIN', 'SUPER_ADMIN', 'EVENTS_LEAD', 'FINANCE', 'PASTORAL');
+
+do $$
+begin
+  alter type public.app_role add value if not exists 'PASTORAL';
+exception
+  when duplicate_object then null;
+end
+$$;
 
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
+  email text,
   full_name text,
   phone text,
   address_line1 text,
   city text,
   postcode text,
+  status text not null default 'VISITOR',
+  tags text[] not null default '{}',
   role public.app_role not null default 'MEMBER',
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists status text not null default 'VISITOR';
+alter table public.profiles add column if not exists tags text[] not null default '{}';
 
 create table if not exists public.sermons (
   id uuid primary key default gen_random_uuid(),
@@ -64,6 +79,25 @@ create table if not exists public.settings (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.people_notes (
+  id uuid primary key default gen_random_uuid(),
+  profile_user_id uuid not null references public.profiles(user_id) on delete cascade,
+  note text not null,
+  created_by uuid not null references public.profiles(user_id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  email text not null,
+  phone text,
+  consent boolean not null default false,
+  status text not null default 'NEW',
+  tags text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.donations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(user_id) on delete cascade,
@@ -88,12 +122,15 @@ create table if not exists public.gift_aid_declarations (
 
 create index if not exists sermons_published_idx on public.sermons(is_published, preached_at desc);
 create index if not exists events_published_idx on public.events(is_published, starts_at asc);
+create index if not exists profiles_email_idx on public.profiles(email);
 create index if not exists registrations_user_id_idx on public.registrations(user_id);
 create index if not exists registrations_event_id_idx on public.registrations(event_id);
 create index if not exists registrations_checked_in_at_idx on public.registrations(checked_in_at desc);
 create index if not exists donations_user_id_idx on public.donations(user_id);
 create unique index if not exists donations_stripe_session_id_idx on public.donations(stripe_session_id);
 create index if not exists gift_aid_declarations_user_id_idx on public.gift_aid_declarations(user_id);
+create index if not exists people_notes_profile_user_id_idx on public.people_notes(profile_user_id);
+create index if not exists leads_status_idx on public.leads(status);
 
 create or replace function public.current_user_role()
 returns public.app_role
@@ -113,6 +150,8 @@ alter table public.events enable row level security;
 alter table public.registrations enable row level security;
 alter table public.funds enable row level security;
 alter table public.settings enable row level security;
+alter table public.people_notes enable row level security;
+alter table public.leads enable row level security;
 alter table public.donations enable row level security;
 alter table public.gift_aid_declarations enable row level security;
 
@@ -123,7 +162,7 @@ on public.profiles
 for select
 using (
   auth.uid() = user_id
-  or public.current_user_role() in ('ADMIN', 'SUPER_ADMIN')
+  or public.current_user_role() in ('ADMIN', 'SUPER_ADMIN', 'PASTORAL')
 );
 
 drop policy if exists "profiles_update_own" on public.profiles;
@@ -224,6 +263,47 @@ for all
 to authenticated
 using (public.current_user_role() in ('FINANCE', 'ADMIN', 'SUPER_ADMIN'))
 with check (public.current_user_role() in ('FINANCE', 'ADMIN', 'SUPER_ADMIN'));
+
+-- people notes: strict access for admin/pastoral only.
+drop policy if exists "people_notes_admin_pastoral_select" on public.people_notes;
+create policy "people_notes_admin_pastoral_select"
+on public.people_notes
+for select
+to authenticated
+using (public.current_user_role() in ('SUPER_ADMIN', 'ADMIN', 'PASTORAL'));
+
+drop policy if exists "people_notes_admin_pastoral_insert" on public.people_notes;
+create policy "people_notes_admin_pastoral_insert"
+on public.people_notes
+for insert
+to authenticated
+with check (
+  public.current_user_role() in ('SUPER_ADMIN', 'ADMIN', 'PASTORAL')
+  and created_by = auth.uid()
+);
+
+-- leads: public can submit; admin/pastoral can read/manage.
+drop policy if exists "leads_anon_insert_with_consent" on public.leads;
+create policy "leads_anon_insert_with_consent"
+on public.leads
+for insert
+to anon, authenticated
+with check (consent = true);
+
+drop policy if exists "leads_admin_pastoral_read" on public.leads;
+create policy "leads_admin_pastoral_read"
+on public.leads
+for select
+to authenticated
+using (public.current_user_role() in ('SUPER_ADMIN', 'ADMIN', 'PASTORAL'));
+
+drop policy if exists "leads_admin_pastoral_manage" on public.leads;
+create policy "leads_admin_pastoral_manage"
+on public.leads
+for all
+to authenticated
+using (public.current_user_role() in ('SUPER_ADMIN', 'ADMIN', 'PASTORAL'))
+with check (public.current_user_role() in ('SUPER_ADMIN', 'ADMIN', 'PASTORAL'));
 
 -- donations/declarations: user can read own; FINANCE can read all.
 drop policy if exists "donations_select_own_or_finance" on public.donations;

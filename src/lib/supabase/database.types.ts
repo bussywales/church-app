@@ -8,31 +8,40 @@ export type Database = {
       profiles: {
         Row: {
           user_id: string;
+          email: string | null;
           full_name: string | null;
           phone: string | null;
           address_line1: string | null;
           city: string | null;
           postcode: string | null;
+          status: "VISITOR" | "MEMBER";
+          tags: string[];
           role: AppRole;
           created_at: string;
         };
         Insert: {
           user_id: string;
+          email?: string | null;
           full_name?: string | null;
           phone?: string | null;
           address_line1?: string | null;
           city?: string | null;
           postcode?: string | null;
+          status?: "VISITOR" | "MEMBER";
+          tags?: string[];
           role?: AppRole;
           created_at?: string;
         };
         Update: {
           user_id?: string;
+          email?: string | null;
           full_name?: string | null;
           phone?: string | null;
           address_line1?: string | null;
           city?: string | null;
           postcode?: string | null;
+          status?: "VISITOR" | "MEMBER";
+          tags?: string[];
           role?: AppRole;
           created_at?: string;
         };
@@ -239,6 +248,63 @@ export type Database = {
           accepted_at?: string;
           address_snapshot?: Json;
           wording_version?: string;
+        };
+        Relationships: [];
+      };
+      people_notes: {
+        Row: {
+          id: string;
+          profile_user_id: string;
+          note: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_user_id: string;
+          note: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          profile_user_id?: string;
+          note?: string;
+          created_by?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      leads: {
+        Row: {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string | null;
+          consent: boolean;
+          status: string;
+          tags: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          email: string;
+          phone?: string | null;
+          consent?: boolean;
+          status?: string;
+          tags?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          full_name?: string;
+          email?: string;
+          phone?: string | null;
+          consent?: boolean;
+          status?: string;
+          tags?: string[];
+          created_at?: string;
         };
         Relationships: [];
       };

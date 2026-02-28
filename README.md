@@ -46,6 +46,8 @@ Notes:
 - `registrations` enforces uniqueness on `(event_id, user_id)` to prevent duplicate signups.
 - `registrations.checked_in_at` stores the timestamp when an attendee is checked in.
 - `settings` stores feature switches like `gift_aid_enabled`.
+- `people_notes` is internal-only and restricted by RLS to `SUPER_ADMIN`, `ADMIN`, and `PASTORAL`.
+- `leads` captures `/new-here` submissions and supports admin follow-up workflows.
 
 ## Stripe giving setup
 

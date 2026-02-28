@@ -4,6 +4,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/sermons", label: "Sermons" },
   { href: "/events", label: "Events" },
+  { href: "/new-here", label: "New Here" },
   { href: "/give", label: "Give" },
   { href: "/my/registrations", label: "My Registrations" },
   { href: "/account", label: "Account" },
