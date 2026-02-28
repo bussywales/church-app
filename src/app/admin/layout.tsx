@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
-import { CONTENT_ADMIN_ROLES } from "@/lib/roles";
+import { ADMIN_PANEL_ROLES } from "@/lib/roles";
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  await requireRole(CONTENT_ADMIN_ROLES);
+  await requireRole(ADMIN_PANEL_ROLES);
 
   return (
     <section className="space-y-5">
@@ -18,6 +18,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
           </Link>
           <Link href="/admin/events" className="underline">
             Events
+          </Link>
+          <Link href="/admin/settings" className="underline">
+            Settings
           </Link>
         </nav>
       </div>

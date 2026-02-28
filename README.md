@@ -45,3 +45,17 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 Notes:
 - `registrations` enforces uniqueness on `(event_id, user_id)` to prevent duplicate signups.
 - `registrations.checked_in_at` stores the timestamp when an attendee is checked in.
+- `settings` stores feature switches like `gift_aid_enabled`.
+
+## Stripe giving setup
+
+1. Add required environment variables to `.env.local`:
+   - `NEXT_PUBLIC_SITE_URL`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+2. Start the app:
+   - `npm run dev`
+3. Forward Stripe events locally:
+   - `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+4. Copy the reported `whsec_...` value into `STRIPE_WEBHOOK_SECRET`.

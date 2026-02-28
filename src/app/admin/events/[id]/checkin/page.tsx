@@ -12,6 +12,13 @@ type CheckinPageProps = {
   searchParams: Promise<{ result?: string }>;
 };
 
+type CheckedInRow = {
+  id: string;
+  user_id: string;
+  qr_code: string | null;
+  checked_in_at: string | null;
+};
+
 async function submitCheckinAction(formData: FormData) {
   "use server";
 
@@ -52,11 +59,11 @@ export default async function AdminEventCheckinPage({ params, searchParams }: Ch
 
   const supabase = await createClient();
 
-  const [{ data: event }, { data: recentCheckinsData }] = await Promise.all([
+  const [{ data: event }, { data: recentCheckinsRaw }] = await Promise.all([
     supabase.from("events").select("id, title, starts_at").eq("id", id).maybeSingle(),
     supabase
       .from("registrations")
-      .select("id, user_id, qr_code, status, checked_in_at, profiles(full_name)")
+      .select("id, user_id, qr_code, checked_in_at")
       .eq("event_id", id)
       .eq("status", "CHECKED_IN")
       .order("checked_in_at", { ascending: false })
@@ -67,17 +74,22 @@ export default async function AdminEventCheckinPage({ params, searchParams }: Ch
     notFound();
   }
 
-  const recentCheckins = (recentCheckinsData ?? []).map((row) => {
-    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const recentCheckinsRows = (recentCheckinsRaw ?? []) as CheckedInRow[];
+  const profileIds = Array.from(new Set(recentCheckinsRows.map((row) => row.user_id)));
 
-    return {
-      id: row.id,
-      user_id: row.user_id,
-      qr_code: row.qr_code,
-      checked_in_at: row.checked_in_at,
-      full_name: profile?.full_name ?? null,
-    };
-  });
+  const { data: profileData } = profileIds.length
+    ? await supabase.from("profiles").select("user_id, full_name").in("user_id", profileIds)
+    : { data: [] as Array<{ user_id: string; full_name: string | null }> };
+
+  const namesById = new Map((profileData ?? []).map((profile) => [profile.user_id, profile.full_name]));
+
+  const recentCheckins = recentCheckinsRows.map((row) => ({
+    id: row.id,
+    user_id: row.user_id,
+    qr_code: row.qr_code,
+    checked_in_at: row.checked_in_at,
+    full_name: namesById.get(row.user_id) ?? null,
+  }));
 
   return (
     <section className="space-y-5">

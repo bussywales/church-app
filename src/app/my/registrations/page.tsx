@@ -19,20 +19,16 @@ type RegistrationRow = {
   status: string;
   qr_code: string | null;
   created_at: string;
-  events: EventRow | EventRow[] | null;
 };
 
-function toUpcomingRegistrations(rows: RegistrationRow[]) {
+type RegistrationWithEvent = RegistrationRow & {
+  event: EventRow | null;
+};
+
+function toUpcomingRegistrations(rows: RegistrationWithEvent[]) {
   const now = Date.now();
 
   return rows
-    .map((row) => {
-      const event = Array.isArray(row.events) ? row.events[0] : row.events;
-      return {
-        ...row,
-        event: event ?? null,
-      };
-    })
     .filter((row) => row.event && new Date(row.event.starts_at).getTime() >= now)
     .sort((left, right) => new Date(left.event!.starts_at).getTime() - new Date(right.event!.starts_at).getTime());
 }
@@ -43,13 +39,26 @@ export default async function MyRegistrationsPage() {
 
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data: registrationData } = await supabase
     .from("registrations")
-    .select("id, event_id, status, qr_code, created_at, events(id, title, starts_at, location)")
+    .select("id, event_id, status, qr_code, created_at")
     .eq("user_id", user.id);
 
-  const rows = (data ?? []) as RegistrationRow[];
-  const upcoming = toUpcomingRegistrations(rows);
+  const rows = (registrationData ?? []) as RegistrationRow[];
+  const eventIds = Array.from(new Set(rows.map((row) => row.event_id)));
+
+  const { data: eventData } = eventIds.length
+    ? await supabase.from("events").select("id, title, starts_at, location").in("id", eventIds)
+    : { data: [] as EventRow[] };
+
+  const eventsById = new Map((eventData ?? []).map((event) => [event.id, event]));
+
+  const withEvent: RegistrationWithEvent[] = rows.map((row) => ({
+    ...row,
+    event: eventsById.get(row.event_id) ?? null,
+  }));
+
+  const upcoming = toUpcomingRegistrations(withEvent);
 
   const qrImages = await Promise.all(
     upcoming.map(async (row) => {

@@ -58,17 +58,25 @@ create table if not exists public.funds (
   is_active boolean not null default true
 );
 
+create table if not exists public.settings (
+  key text primary key,
+  value_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.donations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(user_id) on delete cascade,
   fund_id uuid references public.funds(id) on delete set null,
   amount_pence int not null check (amount_pence > 0),
   currency text not null default 'gbp',
-  stripe_session_id text,
-  stripe_payment_intent_id text,
+  stripe_session_id text unique,
+  payment_intent_id text,
   status text not null default 'PENDING',
   created_at timestamptz not null default now()
 );
+
+alter table public.donations add column if not exists payment_intent_id text;
 
 create table if not exists public.gift_aid_declarations (
   id uuid primary key default gen_random_uuid(),
@@ -84,6 +92,7 @@ create index if not exists registrations_user_id_idx on public.registrations(use
 create index if not exists registrations_event_id_idx on public.registrations(event_id);
 create index if not exists registrations_checked_in_at_idx on public.registrations(checked_in_at desc);
 create index if not exists donations_user_id_idx on public.donations(user_id);
+create unique index if not exists donations_stripe_session_id_idx on public.donations(stripe_session_id);
 create index if not exists gift_aid_declarations_user_id_idx on public.gift_aid_declarations(user_id);
 
 create or replace function public.current_user_role()
@@ -103,6 +112,7 @@ alter table public.sermons enable row level security;
 alter table public.events enable row level security;
 alter table public.registrations enable row level security;
 alter table public.funds enable row level security;
+alter table public.settings enable row level security;
 alter table public.donations enable row level security;
 alter table public.gift_aid_declarations enable row level security;
 
@@ -199,6 +209,22 @@ to authenticated
 using (public.current_user_role() in ('ADMIN', 'SUPER_ADMIN', 'FINANCE'))
 with check (public.current_user_role() in ('ADMIN', 'SUPER_ADMIN', 'FINANCE'));
 
+-- settings: authenticated users can read; finance/admin can manage.
+drop policy if exists "settings_select_authenticated" on public.settings;
+create policy "settings_select_authenticated"
+on public.settings
+for select
+to authenticated
+using (true);
+
+drop policy if exists "settings_manage_finance_admin" on public.settings;
+create policy "settings_manage_finance_admin"
+on public.settings
+for all
+to authenticated
+using (public.current_user_role() in ('FINANCE', 'ADMIN', 'SUPER_ADMIN'))
+with check (public.current_user_role() in ('FINANCE', 'ADMIN', 'SUPER_ADMIN'));
+
 -- donations/declarations: user can read own; FINANCE can read all.
 drop policy if exists "donations_select_own_or_finance" on public.donations;
 create policy "donations_select_own_or_finance"
@@ -231,3 +257,7 @@ on public.gift_aid_declarations
 for insert
 to authenticated
 with check (auth.uid() = user_id);
+
+insert into public.settings (key, value_json)
+values ('gift_aid_enabled', '{"enabled": false}'::jsonb)
+on conflict (key) do nothing;

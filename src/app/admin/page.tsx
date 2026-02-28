@@ -27,6 +27,14 @@ export default async function AdminPage() {
           Manage events
         </Link>
       </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Giving settings</h2>
+        <p className="mt-1 text-sm text-slate-600">Configure Gift Aid and donation options.</p>
+        <Link href="/admin/settings" className="mt-3 inline-block text-sm underline">
+          Open settings
+        </Link>
+      </Card>
     </div>
   );
 }
