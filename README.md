@@ -48,12 +48,15 @@ See [`.env.example`](./.env.example) for a template.
 
 - Migrations live in `supabase/migrations/` and are the source of truth.
 - `supabase/schema.sql` is kept as a reference snapshot.
+- Create two Supabase projects:
+  - Staging project for `develop` branch migration deploys.
+  - Production project for `main` branch migration deploys.
 
 Link locally:
 
 ```bash
 npx supabase login
-npx supabase link --project-ref uaqbybbnqjzqxggcknhz
+npx supabase link --project-ref <STAGING_OR_PRODUCTION_PROJECT_REF>
 ```
 
 Push locally:
@@ -62,11 +65,20 @@ Push locally:
 npx supabase db push
 ```
 
-- CI deploys migrations on pushes to `main` when `supabase/migrations/**` or `supabase/config.toml` changes.
-- Required GitHub Secrets:
+- Staging CI deploys migrations on pushes to `develop` when `supabase/migrations/**` or `supabase/config.toml` changes.
+- Production CI deploys migrations on pushes to `main` when `supabase/migrations/**` or `supabase/config.toml` changes.
+- Create GitHub Environments named exactly:
+  - `staging`
+  - `production`
+- Add these Environment secrets to both `staging` and `production` (do not use repo-wide secrets for migration deploys):
   - `SUPABASE_PROJECT_REF`
   - `SUPABASE_ACCESS_TOKEN`
   - `SUPABASE_DB_PASSWORD`
+- Recommended branch protection:
+  - Protect `main`.
+  - Require pull requests before merging.
+  - Require the `CI` lint/build check before merging.
+  - Optionally require the production environment approval before deployment.
 
 Notes:
 

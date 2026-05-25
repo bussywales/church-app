@@ -1,14 +1,14 @@
-name: Deploy Supabase Migrations
+name: Deploy Supabase Migrations (Staging)
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
