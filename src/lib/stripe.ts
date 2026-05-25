@@ -1,19 +1,16 @@
 import Stripe from "stripe";
+import { assertRuntimeEnvironmentSafety, serverEnv } from "@/lib/env";
 
 let stripeClient: Stripe | null = null;
 
 export function getStripeClient() {
+  assertRuntimeEnvironmentSafety();
+
   if (stripeClient) {
     return stripeClient;
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-
-  if (!secretKey) {
-    throw new Error("Missing STRIPE_SECRET_KEY");
-  }
-
-  stripeClient = new Stripe(secretKey);
+  stripeClient = new Stripe(serverEnv.STRIPE_SECRET_KEY);
 
   return stripeClient;
 }

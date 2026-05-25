@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStripeClient } from "@/lib/stripe";
 import { getDonationReceiptProvider } from "@/lib/email/receipt";
+import { serverEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 
@@ -142,9 +143,9 @@ async function handleCheckoutSessionEvent(eventType: string, session: Stripe.Che
 export async function POST(request: Request) {
   const stripe = getStripeClient();
   const signature = request.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = serverEnv.STRIPE_WEBHOOK_SECRET;
 
-  if (!signature || !webhookSecret) {
+  if (!signature) {
     return NextResponse.json({ error: "Missing webhook signature configuration." }, { status: 400 });
   }
 

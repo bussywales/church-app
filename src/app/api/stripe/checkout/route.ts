@@ -3,6 +3,7 @@ import { ensureProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeClient } from "@/lib/stripe";
 import { getGiftAidEnabled } from "@/lib/settings";
+import { getOptionalEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 
@@ -51,7 +52,7 @@ function computeAmountPence(payload: CheckoutPayload) {
 }
 
 function getSiteUrl(request: Request) {
-  return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  return getOptionalEnv("NEXT_PUBLIC_SITE_URL") || new URL(request.url).origin;
 }
 
 export async function POST(request: Request) {

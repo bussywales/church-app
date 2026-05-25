@@ -5,28 +5,23 @@ import type {
   RegistrationEmailPayload,
   RegistrationEmailProvider,
 } from "@/lib/email/provider";
-
-const DEFAULT_FROM_EMAIL = "Church App <onboarding@resend.dev>";
+import { assertRuntimeEnvironmentSafety, serverEnv } from "@/lib/env";
 
 let resendClient: Resend | null = null;
 
 function getResendClient() {
+  assertRuntimeEnvironmentSafety();
+
   if (resendClient) {
     return resendClient;
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("Missing RESEND_API_KEY.");
-  }
-
-  resendClient = new Resend(apiKey);
+  resendClient = new Resend(serverEnv.RESEND_API_KEY);
   return resendClient;
 }
 
 function getFromEmail() {
-  return process.env.RESEND_FROM_EMAIL || DEFAULT_FROM_EMAIL;
+  return serverEnv.RESEND_FROM_EMAIL;
 }
 
 function escapeHtml(value: string) {
