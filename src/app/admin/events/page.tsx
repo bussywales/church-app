@@ -135,11 +135,16 @@ export default async function AdminEventsPage() {
     .from("events")
     .select("id, title, description, location, starts_at, ends_at, capacity, is_published, created_at")
     .order("starts_at", { ascending: true });
+  const eventRows = events ?? [];
 
   return (
     <section className="space-y-5">
       <Card>
         <h2 className="text-xl font-semibold">Create event</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Add events manually here, or run <code className="rounded bg-slate-100 px-1">npm run seed</code> to load
+          three upcoming demo events.
+        </p>
         <form action={createEventAction} className="mt-4 grid gap-3 md:grid-cols-2">
           <input name="title" required placeholder="Title" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input
@@ -190,7 +195,7 @@ export default async function AdminEventsPage() {
       </Card>
 
       <div className="grid gap-4">
-        {(events ?? []).map((event) => (
+        {eventRows.map((event) => (
           <Card key={event.id}>
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold">{event.title}</h3>
@@ -287,6 +292,16 @@ export default async function AdminEventsPage() {
             </div>
           </Card>
         ))}
+
+        {!eventRows.length ? (
+          <Card>
+            <h3 className="text-lg font-semibold">No events yet</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Create the first event above, or seed upcoming demo events including a low-capacity registration case with{" "}
+              <code className="rounded bg-slate-100 px-1">npm run seed</code>.
+            </p>
+          </Card>
+        ) : null}
       </div>
     </section>
   );

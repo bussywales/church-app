@@ -44,6 +44,63 @@ See [`.env.example`](./.env.example) for a template.
 3. Open [`supabase/schema.sql`](./supabase/schema.sql).
 4. Run the script to create schema and RLS policies.
 
+## Demo seed data
+
+After applying the schema and setting `.env.local`, seed demo-ready public content:
+
+```bash
+npm run seed
+```
+
+The seed script uses `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from `.env.local` or exported
+environment variables. It upserts fixed demo IDs for funds, sermons, and events so it can be rerun without creating
+duplicates. Do not commit `.env.local` or service-role keys.
+
+## Bootstrapping SUPER_ADMIN
+
+The safest first-admin flow is manual and explicit:
+
+1. Create the first user through the app registration flow.
+2. Sign in once so the app creates a matching `profiles` row.
+3. In Supabase SQL Editor, promote only that known user by exact email or `user_id`.
+4. Do not put service-role keys or admin credentials in committed files.
+
+Promote by exact email:
+
+```sql
+update public.profiles
+set role = 'SUPER_ADMIN',
+    status = 'MEMBER'
+where user_id = (
+  select id
+  from auth.users
+  where email = 'admin@example.com'
+);
+```
+
+If the profile row does not exist yet, create or update it from the auth user:
+
+```sql
+insert into public.profiles (user_id, email, role, status)
+select id, email, 'SUPER_ADMIN', 'MEMBER'
+from auth.users
+where email = 'admin@example.com'
+on conflict (user_id)
+do update set
+  email = excluded.email,
+  role = 'SUPER_ADMIN',
+  status = 'MEMBER';
+```
+
+Promote by known `user_id`:
+
+```sql
+update public.profiles
+set role = 'SUPER_ADMIN',
+    status = 'MEMBER'
+where user_id = '00000000-0000-0000-0000-000000000000';
+```
+
 ## Database migrations (Supabase)
 
 - Migrations live in `supabase/migrations/` and are the source of truth.

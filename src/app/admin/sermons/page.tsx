@@ -126,11 +126,16 @@ export default async function AdminSermonsPage() {
     .from("sermons")
     .select("id, title, speaker, series, youtube_url, preached_at, notes_md, tags, is_published, created_at")
     .order("created_at", { ascending: false });
+  const sermonRows = sermons ?? [];
 
   return (
     <section className="space-y-5">
       <Card>
         <h2 className="text-xl font-semibold">Create sermon</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Add individual sermons here, or run <code className="rounded bg-slate-100 px-1">npm run seed</code> to load
+          demo sermons.
+        </p>
         <form action={createSermonAction} className="mt-4 grid gap-3 md:grid-cols-2">
           <input name="title" required placeholder="Title" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <input name="speaker" placeholder="Speaker" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
@@ -169,7 +174,7 @@ export default async function AdminSermonsPage() {
       </Card>
 
       <div className="grid gap-4">
-        {(sermons ?? []).map((sermon) => (
+        {sermonRows.map((sermon) => (
           <Card key={sermon.id}>
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold">{sermon.title}</h3>
@@ -261,6 +266,16 @@ export default async function AdminSermonsPage() {
             </div>
           </Card>
         ))}
+
+        {!sermonRows.length ? (
+          <Card>
+            <h3 className="text-lg font-semibold">No sermons yet</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Create the first sermon above, or seed five published demo sermons with{" "}
+              <code className="rounded bg-slate-100 px-1">npm run seed</code>.
+            </p>
+          </Card>
+        ) : null}
       </div>
     </section>
   );

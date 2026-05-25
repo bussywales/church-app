@@ -170,7 +170,12 @@ export default async function AdminPeoplePage({ searchParams }: AdminPeoplePageP
 
         {!profiles.length ? (
           <Card>
-            <p className="text-sm text-slate-600">No profiles match your filters.</p>
+            <h3 className="text-lg font-semibold">{q || status || tag ? "No matching people" : "No profiles yet"}</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {q || status || tag
+                ? "Clear filters or search another name, email, status, or tag."
+                : "Profiles are created when users register or first sign in. Bootstrap the first SUPER_ADMIN from the Supabase SQL Editor, then invite staff to create accounts."}
+            </p>
           </Card>
         ) : null}
       </div>
