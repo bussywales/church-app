@@ -34,6 +34,8 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_SITE_URL`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL` (optional; defaults to Resend's onboarding sender for development)
 
 See [`.env.example`](./.env.example) for a template.
 

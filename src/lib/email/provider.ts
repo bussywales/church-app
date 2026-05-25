@@ -1,3 +1,5 @@
+import { ResendEmailProvider } from "@/lib/email/resend";
+
 export type RegistrationEmailPayload = {
   to: string;
   eventTitle: string;
@@ -5,18 +7,18 @@ export type RegistrationEmailPayload = {
   qrToken: string;
 };
 
+export type EventReminderEmailPayload = {
+  to: string;
+  eventTitle: string;
+  eventStartsAt: string;
+};
+
 export interface RegistrationEmailProvider {
   sendRegistrationConfirmation(payload: RegistrationEmailPayload): Promise<void>;
+  sendEventReminder(payload: EventReminderEmailPayload): Promise<void>;
 }
 
-class ConsoleRegistrationEmailProvider implements RegistrationEmailProvider {
-  async sendRegistrationConfirmation(payload: RegistrationEmailPayload): Promise<void> {
-    // Placeholder implementation for MVP. Replace with real provider integration in Phase 2.
-    console.info("[registration-email] confirmation", payload);
-  }
-}
-
-const provider: RegistrationEmailProvider = new ConsoleRegistrationEmailProvider();
+const provider: RegistrationEmailProvider = new ResendEmailProvider();
 
 export function getRegistrationEmailProvider() {
   return provider;

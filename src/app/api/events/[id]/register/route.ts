@@ -68,12 +68,17 @@ export async function POST(_request: Request, context: RegisterRouteContext) {
 
   if (user.email) {
     const emailProvider = getRegistrationEmailProvider();
-    await emailProvider.sendRegistrationConfirmation({
-      to: user.email,
-      eventTitle: event.title,
-      eventStartsAt: event.starts_at,
-      qrToken,
-    });
+
+    try {
+      await emailProvider.sendRegistrationConfirmation({
+        to: user.email,
+        eventTitle: event.title,
+        eventStartsAt: event.starts_at,
+        qrToken,
+      });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Registration confirmation email failed.");
+    }
   }
 
   return NextResponse.json({ message: "Registration successful." });

@@ -13,6 +13,7 @@ type ExistingDonationRow = {
   amount_pence: number;
   currency: string;
   status: string;
+  created_at: string;
 };
 
 function mapDonationStatus(eventType: string, session: Stripe.Checkout.Session) {
@@ -41,6 +42,7 @@ async function sendReceiptIfNeeded(
   amountPence: number,
   currency: string,
   status: string,
+  receiptedAt: string,
 ) {
   if (status !== "SUCCEEDED") {
     return;
@@ -60,6 +62,7 @@ async function sendReceiptIfNeeded(
     currency,
     fundName,
     status,
+    receiptedAt,
   });
 }
 
@@ -68,7 +71,7 @@ async function handleCheckoutSessionEvent(eventType: string, session: Stripe.Che
 
   const { data: existingDonationRaw } = await supabase
     .from("donations")
-    .select("id, user_id, fund_id, amount_pence, currency, status")
+    .select("id, user_id, fund_id, amount_pence, currency, status, created_at")
     .eq("stripe_session_id", session.id)
     .maybeSingle();
   const existingDonation = existingDonationRaw as ExistingDonationRow | null;
@@ -119,7 +122,18 @@ async function handleCheckoutSessionEvent(eventType: string, session: Stripe.Che
       fundName = fund?.name || fundName;
     }
 
-    await sendReceiptIfNeeded(userId, fundName, amountPence, currency, status);
+    try {
+      await sendReceiptIfNeeded(
+        userId,
+        fundName,
+        amountPence,
+        currency,
+        status,
+        existingDonation?.created_at ?? new Date().toISOString(),
+      );
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Donation receipt email failed.");
+    }
   }
 
   return NextResponse.json({ received: true });
