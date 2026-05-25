@@ -28,6 +28,8 @@ npm run dev
 
 Required in `.env.local`:
 
+- `APP_ENV`
+- `NEXT_PUBLIC_APP_ENV`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -35,7 +37,7 @@ Required in `.env.local`:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL` (optional; defaults to Resend's onboarding sender for development)
+- `RESEND_FROM_EMAIL`
 
 See [`.env.example`](./.env.example) for a template.
 
@@ -163,6 +165,13 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 3. Copy the reported `whsec_...` value into `STRIPE_WEBHOOK_SECRET`.
 4. Trigger a test Checkout flow from `/give`.
+
+## Deploy to Vercel
+
+Runtime environment separation is required: preview deployments should use staging Supabase, Stripe test keys, and
+staging/shared Resend; production deployments should use production Supabase, Stripe live keys, and production Resend.
+
+See [`docs/VERCEL_DEPLOYMENT.md`](./docs/VERCEL_DEPLOYMENT.md) for the full setup checklist and commands.
 
 ## Validation
 
