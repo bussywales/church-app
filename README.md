@@ -4,6 +4,14 @@ Next.js + Supabase + Stripe church management app with public content, registrat
 
 ## Local development
 
+## Node version
+
+Use Node `20.x` for local development, CI, and Vercel. With `nvm`:
+
+```bash
+nvm use
+```
+
 1. Install dependencies:
 
 ```bash
