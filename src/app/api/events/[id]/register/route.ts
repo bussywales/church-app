@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "node:crypto";
 import { ensureProfile } from "@/lib/auth";
 import { getRegistrationEmailProvider } from "@/lib/email/provider";
 import { createClient } from "@/lib/supabase/server";
@@ -7,6 +6,36 @@ import { createClient } from "@/lib/supabase/server";
 type RegisterRouteContext = {
   params: Promise<{ id: string }>;
 };
+
+type RegistrationRpcResult = {
+  registration_id: string;
+  qr_code: string | null;
+  event_title: string;
+  event_starts_at: string;
+  status: string;
+  message: string;
+  was_created: boolean;
+};
+
+function registrationErrorResponse(message: string) {
+  if (message.includes("AUTH_REQUIRED")) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  if (message.includes("EVENT_NOT_FOUND")) {
+    return NextResponse.json({ error: "Event not found." }, { status: 404 });
+  }
+
+  if (message.includes("EVENT_FULL")) {
+    return NextResponse.json({ error: "Event capacity reached." }, { status: 409 });
+  }
+
+  if (message.includes("DUPLICATE_REGISTRATION")) {
+    return NextResponse.json({ message: "You are already registered for this event." });
+  }
+
+  return NextResponse.json({ error: "Unable to register right now." }, { status: 400 });
+}
 
 export async function POST(_request: Request, context: RegisterRouteContext) {
   const { id: eventId } = await context.params;
@@ -21,65 +50,37 @@ export async function POST(_request: Request, context: RegisterRouteContext) {
 
   await ensureProfile(user);
 
-  const [{ data: event }, { count }, { data: existing }] = await Promise.all([
-    supabase
-      .from("events")
-      .select("id, title, starts_at, capacity, is_published")
-      .eq("id", eventId)
-      .eq("is_published", true)
-      .maybeSingle(),
-    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", eventId),
-    supabase
-      .from("registrations")
-      .select("id")
-      .eq("event_id", eventId)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
-
-  if (!event) {
-    return NextResponse.json({ error: "Event not found." }, { status: 404 });
-  }
-
-  if (existing) {
-    return NextResponse.json({ message: "You are already registered for this event." });
-  }
-
-  if (event.capacity !== null && (count ?? 0) >= event.capacity) {
-    return NextResponse.json({ error: "Event capacity reached." }, { status: 409 });
-  }
-
-  const qrToken = randomUUID();
-
-  const { error } = await supabase.from("registrations").insert({
-    event_id: eventId,
-    user_id: user.id,
-    status: "REGISTERED",
-    qr_code: qrToken,
-  });
+  const { data, error } = await supabase.rpc("register_for_event", { p_event_id: eventId }).single();
 
   if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json({ message: "You are already registered for this event." });
-    }
+    return registrationErrorResponse(error.message);
+  }
 
+  const registration = data as RegistrationRpcResult | null;
+
+  if (!registration) {
     return NextResponse.json({ error: "Unable to register right now." }, { status: 400 });
   }
 
-  if (user.email) {
+  if (registration.was_created && user.email && registration.qr_code) {
     const emailProvider = getRegistrationEmailProvider();
 
     try {
       await emailProvider.sendRegistrationConfirmation({
         to: user.email,
-        eventTitle: event.title,
-        eventStartsAt: event.starts_at,
-        qrToken,
+        eventTitle: registration.event_title,
+        eventStartsAt: registration.event_starts_at,
+        qrToken: registration.qr_code,
       });
     } catch (error) {
       console.error(error instanceof Error ? error.message : "Registration confirmation email failed.");
     }
   }
 
-  return NextResponse.json({ message: "Registration successful." });
+  return NextResponse.json({
+    message: registration.message,
+    registrationId: registration.registration_id,
+    qrCode: registration.qr_code,
+    status: registration.status,
+  });
 }
