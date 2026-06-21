@@ -11,6 +11,10 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
+    "cwb:validate": "tsx scripts/cwb/validate.ts",
+    "cwb:import": "tsx scripts/cwb/import.ts",
+    "cwb:assert-public-clean": "tsx scripts/cwb/assert-public-clean.ts",
+    "test:cwb": "node --import tsx --test tests/cwb/*.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -30,9 +34,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/stream-json": "^1.7.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "prettier": "^3.8.1",
+    "stream-json": "^1.9.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
     "typescript": "^5"
