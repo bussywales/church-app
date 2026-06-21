@@ -36,5 +36,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: CWB tests
+        run: npm run test:cwb
+
       - name: Build
         run: npm run build
+
+      - name: CWB public payload exclusion
+        run: npm run cwb:assert-public-clean
