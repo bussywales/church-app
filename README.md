@@ -46,8 +46,12 @@ Required in `.env.local`:
 - `STRIPE_WEBHOOK_SECRET`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
+- `CWB_INTERNAL_PREVIEW_ENABLED` (server-only, defaults closed when absent)
 
 See [`.env.example`](./.env.example) for a template.
+
+CWB Phase 1 import and diagnostics procedures are in
+[`docs/CWB_INTERNAL_PREVIEW_RUNBOOK.md`](./docs/CWB_INTERNAL_PREVIEW_RUNBOOK.md).
 
 ## Supabase setup
 
