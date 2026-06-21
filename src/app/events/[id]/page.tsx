@@ -13,14 +13,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const { id } = await params;
   const [supabase, user] = await Promise.all([createClient(), getCurrentUser()]);
 
-  const [{ data: event }, { count: registrationCount }, { data: existingRegistration }] = await Promise.all([
+  const [{ data: event }, { data: availability }, { data: existingRegistration }] = await Promise.all([
     supabase
       .from("events")
       .select("id, title, description, location, starts_at, ends_at, capacity")
       .eq("id", id)
       .eq("is_published", true)
       .maybeSingle(),
-    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", id),
+    supabase.rpc("get_event_registration_availability", { p_event_id: id }).maybeSingle(),
     user
       ? supabase
           .from("registrations")
@@ -35,8 +35,9 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     notFound();
   }
 
-  const currentCount = registrationCount ?? 0;
-  const capacityReached = event.capacity !== null && currentCount >= event.capacity;
+  const currentCount = availability?.active_registration_count ?? 0;
+  const capacity = availability?.capacity ?? event.capacity;
+  const capacityReached = availability?.capacity_reached ?? false;
 
   return (
     <article className="space-y-5">
@@ -53,7 +54,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
         <p className="mt-4 text-sm text-slate-700">
           Registrations: {currentCount}
-          {event.capacity !== null ? ` / ${event.capacity}` : " (unlimited)"}
+          {capacity !== null ? ` / ${capacity}` : " (unlimited)"}
         </p>
 
         <div className="mt-5">

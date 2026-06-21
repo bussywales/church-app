@@ -163,7 +163,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -281,6 +281,37 @@ revoke all on function public.register_for_event(uuid) from public;
 revoke all on function public.register_for_event(uuid) from anon;
 revoke all on function public.register_for_event(uuid) from authenticated;
 grant execute on function public.register_for_event(uuid) to authenticated;
+
+create or replace function public.get_event_registration_availability(p_event_id uuid)
+returns table (
+  event_id uuid,
+  active_registration_count int,
+  capacity int,
+  capacity_reached boolean
+)
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select
+    e.id as event_id,
+    count(r.id)::int as active_registration_count,
+    e.capacity,
+    (e.capacity is not null and count(r.id)::int >= e.capacity) as capacity_reached
+  from public.events e
+  left join public.registrations r
+    on r.event_id = e.id
+   and r.status in ('REGISTERED', 'CHECKED_IN')
+  where e.id = p_event_id
+    and e.is_published = true
+  group by e.id, e.capacity
+$$;
+
+revoke all on function public.get_event_registration_availability(uuid) from public;
+revoke all on function public.get_event_registration_availability(uuid) from anon;
+revoke all on function public.get_event_registration_availability(uuid) from authenticated;
+grant execute on function public.get_event_registration_availability(uuid) to anon, authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.sermons enable row level security;

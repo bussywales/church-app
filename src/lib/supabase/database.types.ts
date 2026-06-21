@@ -315,6 +315,17 @@ export type Database = {
         Args: Record<string, never>;
         Returns: AppRole | null;
       };
+      get_event_registration_availability: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: {
+          event_id: string;
+          active_registration_count: number;
+          capacity: number | null;
+          capacity_reached: boolean;
+        }[];
+      };
       register_for_event: {
         Args: {
           p_event_id: string;
