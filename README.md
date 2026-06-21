@@ -136,6 +136,18 @@ npx supabase db push
 
 - Staging CI deploys migrations on pushes to `develop` when `supabase/migrations/**` or `supabase/config.toml` changes.
 - Production CI deploys migrations on pushes to `main` when `supabase/migrations/**` or `supabase/config.toml` changes.
+- Maintainers can manually deploy a feature branch migration to staging without touching production:
+
+```bash
+gh workflow run supabase-migrate-staging.yml \
+  --ref main \
+  -f migration_ref=fix/atomic-event-registration
+```
+
+Manual staging dispatch uses the `staging` GitHub Environment secrets and refuses to run unless the target Supabase
+project ref is the staging project. It never deploys to production. Once a migration has been manually deployed to
+staging, do not edit that migration file; create a new migration for corrections.
+
 - Create GitHub Environments named exactly:
   - `staging`
   - `production`
