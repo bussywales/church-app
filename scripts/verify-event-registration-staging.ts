@@ -11,6 +11,18 @@ type CleanupState = {
   userIds: string[];
 };
 
+type TestActor = {
+  label: string;
+  userId: string;
+  client: SupabaseClient;
+};
+
+type RegistrationAttempt = {
+  actor: TestActor;
+  data: RegistrationResult | null;
+  errorMessage: string | null;
+};
+
 type RegistrationResult = {
   registration_id: string;
   qr_code: string | null;
@@ -156,23 +168,33 @@ async function createTestUser(
   const session = await authClient.auth.signInWithPassword({ email, password });
 
   if (session.error || !session.data.session?.access_token) {
-    throw new Error(`Sign in test user ${index}: ${session.error?.message ?? "No access token returned."}`);
+    throw new Error(
+      `Sign in test user ${index}: ${session.error?.message ?? "No access token returned."}`,
+    );
   }
 
-  return createAuthedClient(url, anonKey, session.data.session.access_token);
+  return {
+    label: `user-${index}`,
+    userId,
+    client: createAuthedClient(url, anonKey, session.data.session.access_token),
+  } satisfies TestActor;
 }
 
-async function createCapacityOneEvent(serviceClient: SupabaseClient, marker: string, cleanup: CleanupState) {
+async function createTestEvent(
+  serviceClient: SupabaseClient,
+  cleanup: CleanupState,
+  options: { capacity: number; isPublished: boolean; titleSuffix: string },
+) {
   const event = await mustSucceed(
     await serviceClient
       .from("events")
       .insert({
-        title: marker,
+        title: `${cleanup.marker} ${options.titleSuffix}`,
         description: "Disposable QA event for atomic registration verification.",
         location: "QA",
         starts_at: futureIsoDate(),
-        capacity: 1,
-        is_published: true,
+        capacity: options.capacity,
+        is_published: options.isPublished,
       })
       .select("id")
       .single(),
@@ -186,6 +208,25 @@ async function createCapacityOneEvent(serviceClient: SupabaseClient, marker: str
   cleanup.eventIds.push(event.id);
 
   return event.id as string;
+}
+
+function hasExpectedError(message: string | null, expected: string, context: string) {
+  if (!message?.includes(expected)) {
+    throw new Error(`${context}: expected ${expected}, got ${message ?? "no error"}.`);
+  }
+}
+
+async function attemptRegistration(
+  actor: TestActor,
+  eventId: string,
+): Promise<RegistrationAttempt> {
+  const result = await actor.client.rpc("register_for_event", { p_event_id: eventId }).single();
+
+  return {
+    actor,
+    data: result.error ? null : (result.data as RegistrationResult),
+    errorMessage: result.error?.message ?? null,
+  };
 }
 
 async function activeRegistrationCount(serviceClient: SupabaseClient, eventId: string) {
@@ -202,18 +243,34 @@ async function activeRegistrationCount(serviceClient: SupabaseClient, eventId: s
   return count ?? 0;
 }
 
-async function runVerification(serviceClient: SupabaseClient, url: string, anonKey: string, cleanup: CleanupState) {
-  const eventId = await createCapacityOneEvent(serviceClient, cleanup.marker, cleanup);
+async function runVerification(
+  serviceClient: SupabaseClient,
+  url: string,
+  anonKey: string,
+  cleanup: CleanupState,
+) {
+  const eventId = await createTestEvent(serviceClient, cleanup, {
+    capacity: 1,
+    isPublished: true,
+    titleSuffix: "published capacity-one",
+  });
+  const unpublishedEventId = await createTestEvent(serviceClient, cleanup, {
+    capacity: 10,
+    isPublished: false,
+    titleSuffix: "unpublished",
+  });
   const userOne = await createTestUser(serviceClient, url, anonKey, cleanup.marker, 1, cleanup);
   const userTwo = await createTestUser(serviceClient, url, anonKey, cleanup.marker, 2, cleanup);
 
   const concurrentResults = await Promise.all([
-    userOne.rpc("register_for_event", { p_event_id: eventId }).single(),
-    userTwo.rpc("register_for_event", { p_event_id: eventId }).single(),
+    attemptRegistration(userOne, eventId),
+    attemptRegistration(userTwo, eventId),
   ]);
 
-  const successes = concurrentResults.filter((result) => !result.error);
-  const fullErrors = concurrentResults.filter((result) => result.error?.message.includes("EVENT_FULL"));
+  const successes = concurrentResults.filter((result) => result.data);
+  const fullErrors = concurrentResults.filter((result) =>
+    result.errorMessage?.includes("EVENT_FULL"),
+  );
   const activeCount = await activeRegistrationCount(serviceClient, eventId);
 
   if (activeCount > 1) {
@@ -221,16 +278,24 @@ async function runVerification(serviceClient: SupabaseClient, url: string, anonK
   }
 
   if (successes.length !== 1 || fullErrors.length !== 1 || activeCount !== 1) {
-    throw new Error("Concurrency test failed: expected one success, one full rejection, and one active registration.");
+    throw new Error(
+      "Concurrency test failed: expected one success, one full rejection, and one active registration.",
+    );
   }
 
-  const registration = successes[0].data as RegistrationResult;
+  const winningAttempt = successes[0];
+  const losingAttempt = fullErrors[0];
+  const winningActor = winningAttempt.actor;
+  const losingActor = losingAttempt.actor;
+  const registration = winningAttempt.data as RegistrationResult;
 
   if (!registration.qr_code || registration.status !== "REGISTERED" || !registration.was_created) {
     throw new Error("Successful registration did not return expected QR/status/created fields.");
   }
 
-  const duplicate = await userOne.rpc("register_for_event", { p_event_id: eventId }).single();
+  const duplicate = await winningActor.client
+    .rpc("register_for_event", { p_event_id: eventId })
+    .single();
 
   if (duplicate.error) {
     throw new Error(`Duplicate registration returned an error: ${duplicate.error.message}`);
@@ -238,12 +303,23 @@ async function runVerification(serviceClient: SupabaseClient, url: string, anonK
 
   const duplicateData = duplicate.data as RegistrationResult;
 
-  if (duplicateData.was_created || duplicateData.message !== "You are already registered for this event.") {
+  if (
+    duplicateData.was_created ||
+    duplicateData.message !== "You are already registered for this event."
+  ) {
     throw new Error("Duplicate registration did not return the existing-registration response.");
   }
 
+  if (duplicateData.registration_id !== registration.registration_id) {
+    throw new Error(
+      "Duplicate registration did not return the winning user's existing registration.",
+    );
+  }
+
   const availability = await mustSucceed(
-    await userOne.rpc("get_event_registration_availability", { p_event_id: eventId }).single(),
+    await winningActor.client
+      .rpc("get_event_registration_availability", { p_event_id: eventId })
+      .single(),
     "Read availability",
   );
   const availabilityData = availability as AvailabilityResult;
@@ -276,11 +352,49 @@ async function runVerification(serviceClient: SupabaseClient, url: string, anonK
     throw new Error("Checked-in registration did not continue occupying capacity.");
   }
 
+  const unpublishedResult = await winningActor.client
+    .rpc("register_for_event", { p_event_id: unpublishedEventId })
+    .single();
+  hasExpectedError(
+    unpublishedResult.error?.message ?? null,
+    "EVENT_NOT_FOUND",
+    "Unpublished event rejection",
+  );
+
+  const missingResult = await winningActor.client
+    .rpc("register_for_event", { p_event_id: randomUUID() })
+    .single();
+  hasExpectedError(
+    missingResult.error?.message ?? null,
+    "EVENT_NOT_FOUND",
+    "Non-existent event rejection",
+  );
+
+  const anonClient = createClient(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  const unauthenticatedResult = await anonClient
+    .rpc("register_for_event", { p_event_id: eventId })
+    .single();
+
+  if (!unauthenticatedResult.error) {
+    throw new Error("Unauthenticated registration unexpectedly succeeded.");
+  }
+
   console.info("Concurrency overbooking detected? no");
+  console.info(`Concurrency winner: ${winningActor.label}`);
+  console.info(`Concurrency loser: ${losingActor.label}`);
+  console.info("Concurrency loser received EVENT_FULL? yes");
   console.info("Duplicate registration blocked? yes");
   console.info("QR token returned? yes");
   console.info("Availability count accurate? yes");
-  console.info("Check-in occupies capacity? yes");
+  console.info("Database-level CHECKED_IN capacity accounting? yes");
+  console.info("Unpublished event rejected? yes");
+  console.info("Non-existent event rejected? yes");
+  console.info("Unauthenticated RPC rejected? yes");
 }
 
 async function cleanupDisposableData(serviceClient: SupabaseClient, cleanup: CleanupState) {
@@ -289,11 +403,17 @@ async function cleanupDisposableData(serviceClient: SupabaseClient, cleanup: Cle
       await serviceClient.from("registrations").delete().in("event_id", cleanup.eventIds),
       "Cleanup registrations",
     );
-    await mustSucceed(await serviceClient.from("events").delete().in("id", cleanup.eventIds), "Cleanup events");
+    await mustSucceed(
+      await serviceClient.from("events").delete().in("id", cleanup.eventIds),
+      "Cleanup events",
+    );
   }
 
   if (cleanup.userIds.length) {
-    await mustSucceed(await serviceClient.from("profiles").delete().in("user_id", cleanup.userIds), "Cleanup profiles");
+    await mustSucceed(
+      await serviceClient.from("profiles").delete().in("user_id", cleanup.userIds),
+      "Cleanup profiles",
+    );
 
     for (const userId of cleanup.userIds) {
       const { error } = await serviceClient.auth.admin.deleteUser(userId);
@@ -305,7 +425,10 @@ async function cleanupDisposableData(serviceClient: SupabaseClient, cleanup: Cle
   }
 
   const eventProof = cleanup.eventIds.length
-    ? await serviceClient.from("events").select("id", { count: "exact", head: true }).in("id", cleanup.eventIds)
+    ? await serviceClient
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .in("id", cleanup.eventIds)
     : { count: 0, error: null };
   const registrationProof = cleanup.eventIds.length
     ? await serviceClient
@@ -314,18 +437,26 @@ async function cleanupDisposableData(serviceClient: SupabaseClient, cleanup: Cle
         .in("event_id", cleanup.eventIds)
     : { count: 0, error: null };
   const profileProof = cleanup.userIds.length
-    ? await serviceClient.from("profiles").select("user_id", { count: "exact", head: true }).in("user_id", cleanup.userIds)
+    ? await serviceClient
+        .from("profiles")
+        .select("user_id", { count: "exact", head: true })
+        .in("user_id", cleanup.userIds)
     : { count: 0, error: null };
   const markerProof = await serviceClient
     .from("events")
     .select("id", { count: "exact", head: true })
-    .eq("title", cleanup.marker);
+    .ilike("title", `%${cleanup.marker}%`);
+  const markerProfileProof = await serviceClient
+    .from("profiles")
+    .select("user_id", { count: "exact", head: true })
+    .contains("tags", [cleanup.marker]);
 
   for (const [label, result] of [
     ["event cleanup proof", eventProof],
     ["registration cleanup proof", registrationProof],
     ["profile cleanup proof", profileProof],
-    ["marker cleanup proof", markerProof],
+    ["event marker cleanup proof", markerProof],
+    ["profile marker cleanup proof", markerProfileProof],
   ] as const) {
     if (result.error) {
       throw new Error(`${label}: ${result.error.message}`);
@@ -336,7 +467,16 @@ async function cleanupDisposableData(serviceClient: SupabaseClient, cleanup: Cle
     }
   }
 
+  for (const userId of cleanup.userIds) {
+    const { data, error } = await serviceClient.auth.admin.getUserById(userId);
+
+    if (!error || data.user) {
+      throw new Error(`auth user cleanup proof: expected user ${userId} to be removed.`);
+    }
+  }
+
   console.info("Disposable staging cleanup proven? yes");
+  console.info("Disposable auth user cleanup proven? yes");
 }
 
 async function main() {
