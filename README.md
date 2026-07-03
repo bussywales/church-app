@@ -148,6 +148,18 @@ Manual staging dispatch uses the `staging` GitHub Environment secrets and refuse
 project ref is the staging project. It never deploys to production. Once a migration has been manually deployed to
 staging, do not edit that migration file; create a new migration for corrections.
 
+- Production migration deploys use the `production` GitHub Environment secrets and refuse to continue unless
+  `SUPABASE_PROJECT_REF` is the production project ref. Before merging a PR that adds migrations, run the production
+  verify-only workflow:
+
+```bash
+gh workflow run supabase-migrate.yml --ref main -f verify_only=true
+```
+
+Merge migration PRs only after verify-only passes. Production `supabase db push` runs only from the reviewed merge to
+`main` when `supabase/migrations/**` or `supabase/config.toml` changes. Applied migrations must never be edited; rollback
+or correction work requires a new forward migration.
+
 - Create GitHub Environments named exactly:
   - `staging`
   - `production`
