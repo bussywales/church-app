@@ -5,6 +5,23 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
+  workflow_dispatch:
+    inputs:
+      verify_only:
+        description: "Verify production Supabase credentials without pushing migrations"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-migrations
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,11 +32,39 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
+      - name: Show release context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Checked out commit: $(git rev-parse HEAD)"
+          echo "Event name: ${GITHUB_EVENT_NAME}"
+      - name: Validate production project ref
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SUPABASE_PROJECT_REF}" ]]; then
+            echo "SUPABASE_PROJECT_REF is missing."
+            exit 1
+          fi
+
+          if [[ "${SUPABASE_PROJECT_REF}" != "uaqbybbnqjzqxggcknhz" ]]; then
+            echo "Refusing to deploy production migrations to unexpected Supabase project ref."
+            exit 1
+          fi
+
+          echo "Production Supabase project-ref guard passed."
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: latest
       - name: Link project
-        run: supabase link --project-ref $SUPABASE_PROJECT_REF
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: List migrations
+        run: supabase migration list
+      - name: Verify only
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Verify-only run complete. Skipping production db push."
       - name: Push migrations
+        if: github.event_name == 'push'
         run: supabase db push
