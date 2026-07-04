@@ -39,6 +39,12 @@ function buildFilterHref(series: string | null, tag: string | null) {
   return query ? `/sermons?${query}` : "/sermons";
 }
 
+function filterPillClass(isActive: boolean) {
+  return `inline-flex min-h-11 items-center rounded-full px-4 text-xs font-medium ${
+    isActive ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+  }`;
+}
+
 export default async function SermonsPage({ searchParams }: SermonsPageProps) {
   const params = await searchParams;
   const selectedSeries = params.series?.trim() || "";
@@ -109,9 +115,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             href={buildFilterHref(null, selectedTag || null)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              !selectedSeries ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-            }`}
+            className={filterPillClass(!selectedSeries)}
           >
             All series
           </Link>
@@ -119,11 +123,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
             <Link
               key={series}
               href={buildFilterHref(series, selectedTag || null)}
-              className={`rounded-full px-3 py-1 text-xs ${
-                selectedSeries === series
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700"
-              }`}
+              className={filterPillClass(selectedSeries === series)}
             >
               {series}
             </Link>
@@ -134,9 +134,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             href={buildFilterHref(selectedSeries || null, null)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              !selectedTag ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-            }`}
+            className={filterPillClass(!selectedTag)}
           >
             All tags
           </Link>
@@ -144,9 +142,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
             <Link
               key={tag}
               href={buildFilterHref(selectedSeries || null, tag)}
-              className={`rounded-full px-3 py-1 text-xs ${
-                selectedTag === tag ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-              }`}
+              className={filterPillClass(selectedTag === tag)}
             >
               #{tag}
             </Link>
@@ -158,7 +154,10 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
         {sermons.map((sermon) => (
           <Card key={sermon.id}>
             <h2 className="text-xl font-semibold">
-              <Link className="hover:underline" href={`/sermons/${sermon.id}`}>
+              <Link
+                className="inline-flex min-h-11 items-center hover:underline"
+                href={`/sermons/${sermon.id}`}
+              >
                 {sermon.title}
               </Link>
             </h2>
@@ -173,7 +172,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
                   <Link
                     key={tag}
                     href={buildFilterHref(selectedSeries || null, tag)}
-                    className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                    className="inline-flex min-h-11 items-center rounded-full bg-slate-100 px-4 text-xs font-medium text-slate-700"
                   >
                     #{tag}
                   </Link>

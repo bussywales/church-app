@@ -21,7 +21,7 @@ export function FeatureCard({
       <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
       <Link
         href={href}
-        className="mt-5 inline-flex rounded-full text-sm font-bold text-royal underline-offset-4 transition hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
+        className="mt-4 inline-flex min-h-11 items-center rounded-full text-sm font-bold text-royal underline-offset-4 transition hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
       >
         {label}
       </Link>
@@ -48,7 +48,7 @@ export function SermonCard({
       <h3 className="mt-4 font-display text-3xl leading-tight text-ink">
         <Link
           href={href}
-          className="rounded-lg hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
+          className="inline-flex min-h-11 items-center rounded-lg hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
         >
           {title}
         </Link>
@@ -97,7 +97,7 @@ export function EventCard({
       <h3 className="mt-4 font-display text-2xl leading-tight text-ink">
         <Link
           href={href}
-          className="rounded-lg hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
+          className="inline-flex min-h-11 items-center rounded-lg hover:text-royal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
         >
           {title}
         </Link>

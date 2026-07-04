@@ -63,7 +63,10 @@ export default async function EventsPage() {
         {events.map((event) => (
           <Card key={event.id}>
             <h2 className="text-xl font-semibold">
-              <Link className="hover:underline" href={`/events/${event.id}`}>
+              <Link
+                className="inline-flex min-h-11 items-center hover:underline"
+                href={`/events/${event.id}`}
+              >
                 {event.title}
               </Link>
             </h2>

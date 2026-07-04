@@ -41,7 +41,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
               <Link
                 key={link.href}
                 href={link.href}
-                className="inline-flex min-h-10 shrink-0 items-center rounded-full bg-white/10 px-3 text-sm font-bold text-white/78 transition hover:bg-white hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-primary"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-white/10 px-3 text-sm font-bold text-white/78 transition hover:bg-white hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-primary"
               >
                 {link.label}
               </Link>

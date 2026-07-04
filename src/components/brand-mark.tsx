@@ -33,6 +33,7 @@ export function BrandMark({ compact = false, href = "/", className }: BrandMarkP
   return (
     <Link
       href={href}
+      aria-label="Covenant Ways Church home"
       className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory"
     >
       {mark}
