@@ -5,7 +5,7 @@ import { EventCard, FeatureCard, SermonCard, StatCard } from "@/components/ui/co
 import { ClosingCta, HeroSection, Section } from "@/components/ui/layout";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDate, formatDateTime } from "@/lib/content";
-import { createClient } from "@/lib/supabase/server";
+import { createOptionalPublicClient } from "@/lib/supabase/optional-public";
 
 type SermonPreview = {
   id: string;
@@ -34,27 +34,48 @@ function sortUpcoming(events: EventPreview[]) {
     );
 }
 
+async function getHomepagePreviewContent() {
+  const supabase = await createOptionalPublicClient("Homepage preview content");
+
+  if (!supabase) {
+    return { latestSermon: undefined, upcomingEvents: [] };
+  }
+
+  try {
+    const [{ data: sermonData, error: sermonError }, { data: eventData, error: eventError }] =
+      await Promise.all([
+        supabase
+          .from("sermons")
+          .select("id, title, speaker, series, preached_at, tags")
+          .eq("is_published", true)
+          .order("preached_at", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1),
+        supabase
+          .from("events")
+          .select("id, title, description, location, starts_at")
+          .eq("is_published", true)
+          .order("starts_at", { ascending: true })
+          .limit(6),
+      ]);
+
+    if (sermonError || eventError) {
+      console.warn("Homepage preview content unavailable: Supabase read failed.");
+      return { latestSermon: undefined, upcomingEvents: [] };
+    }
+
+    return {
+      latestSermon: ((sermonData ?? []) as SermonPreview[])[0],
+      upcomingEvents: sortUpcoming((eventData ?? []) as EventPreview[]).slice(0, 3),
+    };
+  } catch {
+    console.warn("Homepage preview content: optional fetch failed.");
+    return { latestSermon: undefined, upcomingEvents: [] };
+  }
+}
+
 export default async function HomePage() {
-  const supabase = await createClient();
-
-  const [{ data: sermonData }, { data: eventData }] = await Promise.all([
-    supabase
-      .from("sermons")
-      .select("id, title, speaker, series, preached_at, tags")
-      .eq("is_published", true)
-      .order("preached_at", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(1),
-    supabase
-      .from("events")
-      .select("id, title, description, location, starts_at")
-      .eq("is_published", true)
-      .order("starts_at", { ascending: true })
-      .limit(6),
-  ]);
-
-  const latestSermon = ((sermonData ?? []) as SermonPreview[])[0];
-  const upcomingEvents = sortUpcoming((eventData ?? []) as EventPreview[]).slice(0, 3);
+  const { latestSermon, upcomingEvents } = await getHomepagePreviewContent();
 
   return (
     <div className="space-y-8 sm:space-y-10">

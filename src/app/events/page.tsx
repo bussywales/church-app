@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createOptionalPublicClient } from "@/lib/supabase/optional-public";
 import { Card } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/content";
 
@@ -35,13 +35,25 @@ function sortEventsUpcomingFirst(
 }
 
 export default async function EventsPage() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("events")
-    .select("id, title, description, location, starts_at, ends_at, capacity")
-    .eq("is_published", true);
+  const supabase = await createOptionalPublicClient("Events page");
+  let events: Awaited<ReturnType<typeof sortEventsUpcomingFirst>> = [];
 
-  const events = sortEventsUpcomingFirst(data ?? []);
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("id, title, description, location, starts_at, ends_at, capacity")
+        .eq("is_published", true);
+
+      if (error) {
+        console.warn("Events page: optional public content fetch failed.");
+      } else {
+        events = sortEventsUpcomingFirst(data ?? []);
+      }
+    } catch {
+      console.warn("Events page: optional public content fetch failed.");
+    }
+  }
 
   return (
     <section className="space-y-6">
@@ -59,11 +71,13 @@ export default async function EventsPage() {
               {formatDateTime(event.starts_at)}
               {event.ends_at ? ` - ${formatDateTime(event.ends_at)}` : ""}
             </p>
-            {event.location ? <p className="mt-1 text-sm text-slate-600">{event.location}</p> : null}
-            {event.description ? <p className="mt-3 text-sm text-slate-700">{event.description}</p> : null}
-            <p className="mt-3 text-xs text-slate-500">
-              Capacity: {event.capacity ?? "No limit"}
-            </p>
+            {event.location ? (
+              <p className="mt-1 text-sm text-slate-600">{event.location}</p>
+            ) : null}
+            {event.description ? (
+              <p className="mt-3 text-sm text-slate-700">{event.description}</p>
+            ) : null}
+            <p className="mt-3 text-xs text-slate-500">Capacity: {event.capacity ?? "No limit"}</p>
           </Card>
         ))}
 

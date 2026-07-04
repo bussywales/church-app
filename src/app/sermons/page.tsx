@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createOptionalPublicClient } from "@/lib/supabase/optional-public";
 import { Card } from "@/components/ui/card";
 import { formatDate } from "@/lib/content";
 
@@ -43,33 +43,53 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
   const params = await searchParams;
   const selectedSeries = params.series?.trim() || "";
   const selectedTag = params.tag?.trim() || "";
-  const supabase = await createClient();
+  const supabase = await createOptionalPublicClient("Sermons page");
 
-  let sermonsQuery = supabase
-    .from("sermons")
-    .select("id, title, speaker, series, preached_at, tags")
-    .eq("is_published", true)
-    .order("preached_at", { ascending: false })
-    .order("created_at", { ascending: false });
+  let sermons: SermonListItem[] = [];
+  let filterData: SermonFilterSource[] = [];
 
-  if (selectedSeries) {
-    sermonsQuery = sermonsQuery.eq("series", selectedSeries);
+  if (supabase) {
+    try {
+      let sermonsQuery = supabase
+        .from("sermons")
+        .select("id, title, speaker, series, preached_at, tags")
+        .eq("is_published", true)
+        .order("preached_at", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (selectedSeries) {
+        sermonsQuery = sermonsQuery.eq("series", selectedSeries);
+      }
+
+      if (selectedTag) {
+        sermonsQuery = sermonsQuery.contains("tags", [selectedTag]);
+      }
+
+      const [
+        { data: sermonsData, error: sermonsError },
+        { data: filterDataRaw, error: filterError },
+      ] = await Promise.all([
+        sermonsQuery,
+        supabase.from("sermons").select("series, tags").eq("is_published", true),
+      ]);
+
+      if (sermonsError || filterError) {
+        console.warn("Sermons page: optional public content fetch failed.");
+      } else {
+        sermons = (sermonsData ?? []) as SermonListItem[];
+        filterData = (filterDataRaw ?? []) as SermonFilterSource[];
+      }
+    } catch {
+      console.warn("Sermons page: optional public content fetch failed.");
+    }
   }
-
-  if (selectedTag) {
-    sermonsQuery = sermonsQuery.contains("tags", [selectedTag]);
-  }
-
-  const [{ data: sermonsData }, { data: filterDataRaw }] = await Promise.all([
-    sermonsQuery,
-    supabase.from("sermons").select("series, tags").eq("is_published", true),
-  ]);
-
-  const sermons = (sermonsData ?? []) as SermonListItem[];
-  const filterData = (filterDataRaw ?? []) as SermonFilterSource[];
 
   const availableSeries = Array.from(
-    new Set((filterData ?? []).map((item) => item.series).filter((value): value is string => Boolean(value))),
+    new Set(
+      (filterData ?? [])
+        .map((item) => item.series)
+        .filter((value): value is string => Boolean(value)),
+    ),
   ).sort((a, b) => a.localeCompare(b));
 
   const availableTags = Array.from(
@@ -100,7 +120,9 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
               key={series}
               href={buildFilterHref(series, selectedTag || null)}
               className={`rounded-full px-3 py-1 text-xs ${
-                selectedSeries === series ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+                selectedSeries === series
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700"
               }`}
             >
               {series}
