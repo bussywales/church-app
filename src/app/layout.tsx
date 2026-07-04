@@ -1,29 +1,32 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Serif_Display, Manrope } from "next/font/google";
 import "./globals.css";
-import { SiteNav } from "@/components/site-nav";
+import { SiteShell } from "@/components/site-shell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const dmSerif = DM_Serif_Display({
+  variable: "--font-dm-serif",
   subsets: ["latin"],
+  weight: "400",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Church App",
-  description: "Church app scaffold",
+  title: "Covenant Ways Church",
+  description:
+    "Church life, sermons, events, giving and member resources for Covenant Ways Church.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-slate-50 text-slate-900 antialiased`}>
-        <SiteNav />
-        <main className="mx-auto w-full max-w-6xl px-4 py-8">{children}</main>
+    <html lang="en" className={`${manrope.variable} ${dmSerif.variable}`}>
+      <body className="antialiased">
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );
