@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
+    "verify:event-registration:staging": "tsx scripts/verify-event-registration-staging.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

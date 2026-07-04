@@ -315,6 +315,31 @@ export type Database = {
         Args: Record<string, never>;
         Returns: AppRole | null;
       };
+      get_event_registration_availability: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: {
+          event_id: string;
+          active_registration_count: number;
+          capacity: number | null;
+          capacity_reached: boolean;
+        }[];
+      };
+      register_for_event: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: {
+          registration_id: string;
+          qr_code: string | null;
+          event_title: string;
+          event_starts_at: string;
+          status: string;
+          message: string;
+          was_created: boolean;
+        }[];
+      };
     };
     Enums: {
       app_role: AppRole;

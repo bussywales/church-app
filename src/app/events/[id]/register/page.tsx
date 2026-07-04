@@ -17,14 +17,14 @@ export default async function EventRegisterPage({ params }: EventRegisterPagePro
 
   const supabase = await createClient();
 
-  const [{ data: event }, { count: registrationCount }, { data: existingRegistration }] = await Promise.all([
+  const [{ data: event }, { data: availability }, { data: existingRegistration }] = await Promise.all([
     supabase
       .from("events")
       .select("id, title, starts_at, capacity")
       .eq("id", id)
       .eq("is_published", true)
       .maybeSingle(),
-    supabase.from("registrations").select("id", { count: "exact", head: true }).eq("event_id", id),
+    supabase.rpc("get_event_registration_availability", { p_event_id: id }).maybeSingle(),
     supabase
       .from("registrations")
       .select("id, qr_code, status")
@@ -37,7 +37,7 @@ export default async function EventRegisterPage({ params }: EventRegisterPagePro
     notFound();
   }
 
-  const capacityReached = event.capacity !== null && (registrationCount ?? 0) >= event.capacity;
+  const capacityReached = availability?.capacity_reached ?? false;
 
   return (
     <Card className="max-w-2xl">
