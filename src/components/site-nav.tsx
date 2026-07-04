@@ -13,8 +13,9 @@ const primaryLinks = [
 const memberLinks = [
   { href: "/my/registrations", label: "My Registrations" },
   { href: "/account", label: "Account" },
-  { href: "/admin", label: "Admin" },
 ];
+
+const adminLink = { href: "/admin", label: "Admin" };
 
 function NavLink({
   href,
@@ -53,12 +54,6 @@ export function SiteNav() {
             <CTAButton href="/give" variant="gold" size="sm">
               Give
             </CTAButton>
-            <Link
-              href="/admin"
-              className="hidden min-h-11 items-center rounded-full border border-border bg-white/65 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-4 focus-visible:ring-offset-ivory md:inline-flex"
-            >
-              Admin
-            </Link>
           </div>
         </div>
 
@@ -75,6 +70,8 @@ export function SiteNav() {
           {memberLinks.map((link) => (
             <NavLink key={link.href} href={link.href} label={link.label} subtle />
           ))}
+          <span className="mx-1 h-11 w-px shrink-0 bg-border" />
+          <NavLink href={adminLink.href} label={adminLink.label} subtle />
         </div>
       </nav>
     </header>
