@@ -82,7 +82,7 @@ export function AuthForm() {
       <div className="mb-4 flex gap-2 rounded-md bg-slate-100 p-1">
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${
+          className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium ${
             mode === "login" ? "bg-white text-slate-900" : "text-slate-600"
           }`}
           onClick={() => {
@@ -95,7 +95,7 @@ export function AuthForm() {
         </button>
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${
+          className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium ${
             mode === "register" ? "bg-white text-slate-900" : "text-slate-600"
           }`}
           onClick={() => {
@@ -108,9 +108,13 @@ export function AuthForm() {
         </button>
       </div>
 
-      <h1 className="text-2xl font-semibold">{mode === "login" ? "Welcome back" : "Create account"}</h1>
+      <h1 className="text-2xl font-semibold">
+        {mode === "login" ? "Welcome back" : "Create account"}
+      </h1>
       <p className="mt-2 text-slate-600">
-        {mode === "login" ? "Sign in with email and password." : "Register with email and password."}
+        {mode === "login"
+          ? "Sign in with email and password."
+          : "Register with email and password."}
       </p>
 
       <form className="mt-4 space-y-3" onSubmit={handleSubmit}>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createOptionalPublicClient } from "@/lib/supabase/optional-public";
 import { Card } from "@/components/ui/card";
 import { formatDate } from "@/lib/content";
 
@@ -39,37 +39,63 @@ function buildFilterHref(series: string | null, tag: string | null) {
   return query ? `/sermons?${query}` : "/sermons";
 }
 
+function filterPillClass(isActive: boolean) {
+  return `inline-flex min-h-11 items-center rounded-full px-4 text-xs font-medium ${
+    isActive ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
+  }`;
+}
+
 export default async function SermonsPage({ searchParams }: SermonsPageProps) {
   const params = await searchParams;
   const selectedSeries = params.series?.trim() || "";
   const selectedTag = params.tag?.trim() || "";
-  const supabase = await createClient();
+  const supabase = await createOptionalPublicClient("Sermons page");
 
-  let sermonsQuery = supabase
-    .from("sermons")
-    .select("id, title, speaker, series, preached_at, tags")
-    .eq("is_published", true)
-    .order("preached_at", { ascending: false })
-    .order("created_at", { ascending: false });
+  let sermons: SermonListItem[] = [];
+  let filterData: SermonFilterSource[] = [];
 
-  if (selectedSeries) {
-    sermonsQuery = sermonsQuery.eq("series", selectedSeries);
+  if (supabase) {
+    try {
+      let sermonsQuery = supabase
+        .from("sermons")
+        .select("id, title, speaker, series, preached_at, tags")
+        .eq("is_published", true)
+        .order("preached_at", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (selectedSeries) {
+        sermonsQuery = sermonsQuery.eq("series", selectedSeries);
+      }
+
+      if (selectedTag) {
+        sermonsQuery = sermonsQuery.contains("tags", [selectedTag]);
+      }
+
+      const [
+        { data: sermonsData, error: sermonsError },
+        { data: filterDataRaw, error: filterError },
+      ] = await Promise.all([
+        sermonsQuery,
+        supabase.from("sermons").select("series, tags").eq("is_published", true),
+      ]);
+
+      if (sermonsError || filterError) {
+        console.warn("Sermons page: optional public content fetch failed.");
+      } else {
+        sermons = (sermonsData ?? []) as SermonListItem[];
+        filterData = (filterDataRaw ?? []) as SermonFilterSource[];
+      }
+    } catch {
+      console.warn("Sermons page: optional public content fetch failed.");
+    }
   }
-
-  if (selectedTag) {
-    sermonsQuery = sermonsQuery.contains("tags", [selectedTag]);
-  }
-
-  const [{ data: sermonsData }, { data: filterDataRaw }] = await Promise.all([
-    sermonsQuery,
-    supabase.from("sermons").select("series, tags").eq("is_published", true),
-  ]);
-
-  const sermons = (sermonsData ?? []) as SermonListItem[];
-  const filterData = (filterDataRaw ?? []) as SermonFilterSource[];
 
   const availableSeries = Array.from(
-    new Set((filterData ?? []).map((item) => item.series).filter((value): value is string => Boolean(value))),
+    new Set(
+      (filterData ?? [])
+        .map((item) => item.series)
+        .filter((value): value is string => Boolean(value)),
+    ),
   ).sort((a, b) => a.localeCompare(b));
 
   const availableTags = Array.from(
@@ -89,9 +115,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             href={buildFilterHref(null, selectedTag || null)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              !selectedSeries ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-            }`}
+            className={filterPillClass(!selectedSeries)}
           >
             All series
           </Link>
@@ -99,9 +123,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
             <Link
               key={series}
               href={buildFilterHref(series, selectedTag || null)}
-              className={`rounded-full px-3 py-1 text-xs ${
-                selectedSeries === series ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-              }`}
+              className={filterPillClass(selectedSeries === series)}
             >
               {series}
             </Link>
@@ -112,9 +134,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             href={buildFilterHref(selectedSeries || null, null)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              !selectedTag ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-            }`}
+            className={filterPillClass(!selectedTag)}
           >
             All tags
           </Link>
@@ -122,9 +142,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
             <Link
               key={tag}
               href={buildFilterHref(selectedSeries || null, tag)}
-              className={`rounded-full px-3 py-1 text-xs ${
-                selectedTag === tag ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"
-              }`}
+              className={filterPillClass(selectedTag === tag)}
             >
               #{tag}
             </Link>
@@ -136,7 +154,10 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
         {sermons.map((sermon) => (
           <Card key={sermon.id}>
             <h2 className="text-xl font-semibold">
-              <Link className="hover:underline" href={`/sermons/${sermon.id}`}>
+              <Link
+                className="inline-flex min-h-11 items-center hover:underline"
+                href={`/sermons/${sermon.id}`}
+              >
                 {sermon.title}
               </Link>
             </h2>
@@ -151,7 +172,7 @@ export default async function SermonsPage({ searchParams }: SermonsPageProps) {
                   <Link
                     key={tag}
                     href={buildFilterHref(selectedSeries || null, tag)}
-                    className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                    className="inline-flex min-h-11 items-center rounded-full bg-slate-100 px-4 text-xs font-medium text-slate-700"
                   >
                     #{tag}
                   </Link>
